@@ -1,0 +1,31 @@
+
+
+rename () {
+	
+	FROM=$1
+	TO=$2
+
+	echo "About to rename some files from '$FROM' to '$TO'"
+	
+
+	for i in *$FROM
+	do
+		j=$(basename "$i" "$FROM")
+		mv -- "$i" "${j}$TO" 2>/dev/null || { echo "Renaming failed..." >&2; exit 1; }
+	done
+	echo "Renamed" \"*$FROM\" "to" \"*$TO\"
+}
+
+chkerr () {
+	# Function. Parameter 1 is the return code
+  	# Para. 2 is text to display on failure.
+	error_code=$1
+	error_text=$2
+
+	if [[ error_code -ne 0 ]]; then
+		echo "Error $error_code: $error_text"
+		[ $0 != "/usr/bin/bash" ] && exit "$error_code"
+	fi
+}
+
+echo "common.lib has been imported successfully. It contains a \"rename\", 'chkerr' functions "
