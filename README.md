@@ -67,17 +67,6 @@ Some scripts may require make the file executable first:
 chmod +x script-name.sh
 ```
 
-## Learning Path
-
-If you're new to shell scripting, consider following these scripts in progression:
-
-1. Start with `first.sh` for basic syntax
-2. Explore `var2.sh` and `var3.sh` for variables
-3. Learn control flow with `test.sh` and `while.sh`
-4. Understand functions with `function.sh`
-5. Try practical applications like `address-book.sh` and `factorial.sh`
-6. Explore advanced topics like `internal-field-seperator.sh`
-
 ## Purpose
 
 These scripts were created for educational purposes to master shell scripting concepts and techniques. Each script focuses on specific programming constructs and patterns commonly used in bash/sh scripting.
@@ -88,7 +77,6 @@ These scripts were created for educational purposes to master shell scripting co
 
 ## Notes
 
-- All scripts are written in POSIX shell-compatible syntax
 - Scripts are primarily for educational purposes and may need modification for production use
 - The address book application demonstrates practical data persistence and menu-driven interfaces
 
