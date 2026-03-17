@@ -1,5 +1,9 @@
 #!/bin/bash
 
+nl () {
+	echo ""
+}
+
 [ -d "./docx-to-epub" ] && cd "./docx-to-epub" || { echo "'docx-to-epub' folder required!"; exit 1; }
 
 echo "Removing output folder..."
@@ -13,12 +17,23 @@ shopt -s nullglob
 
 found=0
 
-echo "Converting word documents..."
-for file in *.docx; do
+echo "Converting documents..."
+for file in *.docx *.pdf; do
 	found=1
 	echo "Converting '$file'..."
-	result="output/${file%.docx}.epub"
-	ebook-convert "$file" "$result"  && echo "'$result' saved!" || echo "Conversion failed!"
+	nl
+	result_epub="output/${file%.docx}.epub"
+	result_pdf="output/${file%.docx}.pdf"
+	case "$file" in
+		*docx )  ebook-convert "$file" "$result_epub"  && echo "'$result_epub' saved!" || echo "Conversion failed!" ;;
+		*pdf)    ebook-convert "$file" "$result_epub"  --enable-heuristics --linearize-tables --dont-split-on-page-breaks --flow-size 0 --no-chapters-in-toc --max-toc-links 0   && echo "'$result_epub' saved!" || echo "Conversion failed!"
+			;;
+	esac
+	nl
+	[[ "$file" == *.pdf ]] || { ebook-convert "$file" "$result_pdf" && echo "'$result_pdf' saved!" || echo "Conversion failed!"; }
+	nl
+	cp "$file" "output/"
+
 done
 
 [ "$found" -eq 0 ] && echo "No documents found!"
