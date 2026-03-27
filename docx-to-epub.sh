@@ -22,11 +22,12 @@ for file in *.docx *.pdf; do
 	found=1
 	echo "Converting '$file'..."
 	nl
-	result_epub="output/${file%.docx}.epub"
-	result_pdf="output/${file%.docx}.pdf"
+	
+	result_epub="output/${file%.*}.epub"
+	result_pdf="output/${file%.*}.pdf"
 	case "$file" in
-		*docx )  ebook-convert "$file" "$result_epub"  && echo "'$result_epub' saved!" || echo "Conversion failed!" ;;
-		*pdf)    ebook-convert "$file" "$result_epub"  --enable-heuristics --linearize-tables --dont-split-on-page-breaks --flow-size 0 --no-chapters-in-toc --max-toc-links 0   && echo "'$result_epub' saved!" || echo "Conversion failed!"
+		*.docx )  ebook-convert "$file" "$result_epub" --title "${file%.*}"  && echo "'$result_epub' saved!" || echo "Conversion failed!" ;;
+		*.pdf)    ebook-convert "$file" "$result_epub" --title "${file%.*}"  --enable-heuristics --linearize-tables --dont-split-on-page-breaks --flow-size 0 --no-chapters-in-toc --max-toc-links 0   && echo "'$result_epub' saved!" || echo "Conversion failed!"
 			;;
 	esac
 	nl
