@@ -140,3 +140,94 @@ The statement “Certain exit status codes have reserved meanings and should not
 
 ## 5th of April, 2026
 - Always use `read varname` – *no dollar sign*. The dollar sign is for expanding a variable’s value; `read` needs the name to assign to
+
+## 7th of April, 2026
+- `while read` vs `mapfile`
+    ```bash
+    # best for dealing with large files, piping and singular processing of each line
+    while IFS= read -r line; do
+        if [[ "$line" == "STOP" ]]; then break; fi
+        echo "$line"
+    done < file.txt
+
+    # best for deaing with small files, random access, etc.
+    mapfile -t lines < data.txt
+    for line in ${lines[@]}; do
+        # do something
+    done
+    ```
+- `IFS=$' \t\n'` Internal Field Seperator is actually space, tab, and a new line
+- `printf` is a **built‑in command** that interprets a format string and then prints arguments according to that format.
+
+    ```bash
+    printf FORMAT [ARGUMENTS...]
+    ```
+    - `FORMAT` is a string containing **plain text** and **format specifiers** (like `%s`, `%d`, `%f`, `%x`, etc.).
+    - `printf` reads the format string left to right.
+    - When it hits a format specifier, it consumes one argument from the list, formats it according to the specifier, and prints it.
+    - Plain text is printed as‑is.
+    - After processing all format specifiers, if there are more arguments than specifiers, the format is **reused** (cycled) until all arguments are consumed.
+
+    | Specifier | Meaning                         | Example               |
+    |-----------|---------------------------------|-----------------------|
+    | `%s`      | String                          | `printf "%s\n" "hi"`  |
+    | `%d`      | Signed decimal integer          | `printf "%d\n" 42`    |
+    | `%c`      | First character of argument     | `printf "%c\n" "abc"` → `a` |
+    | `%%`      | Literal percent sign            | `printf "%%\n"` → `%` |
+
+    You can add modifiers:
+    - `%10s` → right‑align in 10 columns
+    - `%-10s` → left‑align
+    - `%.2f` → 2 decimal places
+    - `%5.2f` → width 5, precision 2
+
+    Example:
+    ```bash
+    printf "|%10s|%-10s|\n" "hello" "world"
+    # |     hello|world     |
+    ```
+
+## 8th of April, 2026
+- `readonly` is used for making constants
+    ```bash
+    # Option 1: Set value and lock in one step
+    readonly VAR_NAME="value"
+
+    # Option 2: Lock an existing variable
+    existing_var="hello"
+    readonly existing_var
+
+    # Multiple at once
+    readonly VAR1="foo" VAR2="bar"
+    ```
+- `getopts`
+    ```bash
+    while getopts ":ab:c" opt; do
+        case $opt in
+            a) echo "Option -a" ;;
+            b) echo "Option -b with arg: $OPTARG" ;;
+            c) echo "Option -c" ;;
+            \?) echo "Invalid option: -$OPTARG" ;;
+            :)  echo "Option -$OPTARG requires an argument." ;;
+        esac
+    done
+    shift $((OPTIND - 1))   # Remove parsed options, leaving positional args
+    ```
+- `exec` can both be used to redirect streams and replace the current process with another using a command
+```bash
+exec sleep 2 # run sleep or whatever command or script placed there and exits when that script is done as if the command or script had replaced the current process
+
+exec &> "/tmp/mylog.log" # redirected standard output and tandard error to log file but continues with script rather than exiting
+
+```
+
+- Working with Jobs
+
+    | Notation | Meaning | Example |
+    |----------|---------|---------|
+    | `%N` | Job number `N` (the number shown in `jobs` output) | `fg %1` brings job 1 to the foreground |
+    | `%S` | Job whose command line **starts with** string `S` | `kill %vim` kills the most recent job starting with `vim` |
+    | `%?S` | Job whose command line **contains** string `S` | `fg %?python` brings forward a job that has "python" anywhere in its command |
+    | `%%` or `%+` | The **current** job (last one stopped or started in background) | `fg %%` brings the most recent job to foreground |
+    | `%-` | The **previous** job (the one before the current job) | `fg %-` brings the second‑most recent job |
+    | `$!` | Process ID (PID) of the **last background process** (not a job specifier, but a variable) | `kill $!` kills the last process sent to background |
