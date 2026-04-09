@@ -231,3 +231,83 @@ exec &> "/tmp/mylog.log" # redirected standard output and tandard error to log f
     | `%%` or `%+` | The **current** job (last one stopped or started in background) | `fg %%` brings the most recent job to foreground |
     | `%-` | The **previous** job (the one before the current job) | `fg %-` brings the second‑most recent job |
     | `$!` | Process ID (PID) of the **last background process** (not a job specifier, but a variable) | `kill $!` kills the last process sent to background |
+
+## 9th of April, 2026
+- `cat` concatenates files or lists a file to standard output. `-n` option inserts consecutive numbers, `tac` does the same but from the end to beginning rather than beginning to end
+    ```bash
+    cat file1 file2 file3 > file123
+    ```
+- Using the `-exec` flag with `find` allows you to run a command on each file matched
+    ```bash
+    find . -name "*.txt" -exec rm {} \; # {} substitutes the full path of the selected flle
+    find . -name "*.txt" -exec rm {} + # This version runs the command in batches but only works for commands that run on multiple fies at once
+    ```
+- A code snippet for running commands in parallel or something like that
+    ```bash
+    printf '%s\0' *.pdf | xargs -0 -n 1 -P "$NUM_CORES" bash -c 'command "$1"' _
+    ```
+- A code snippet fo detemining the amount of core a systme has from script
+    ```bash
+    # Automatically detect cores (works on Linux, macOS, Git Bash/Windows)
+    export NUM_CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+    ```
+-  `cp -u` command, short for `--update`, copies files based on a timestamp comparison
+- `uniq` does not detect all duplicates; it only detects adjacent duplicates. `sort -u file` basically does the same thing anyways although `uniq` has some useful options
+    ```bash
+    # Showing Only Unique Lines (-u): This is the opposite of -d. It prints only the lines that appear exactly once in the adjacent sequence.
+    sort file.txt | uniq -u
+
+    # Showing Only Duplicate Lines (-d): This flag tells uniq to only output lines that appear more than once in a sequence. It's a quick way to find redundant entries.
+    sort file.txt | uniq -d
+
+    # Counting Occurrences (-c): This is uniq's most powerful feature. It counts how many times each line appears consecutively and prefixes the line with that count.
+    sort file.txt | uniq -c
+
+    ```
+- `cut` is a command used for extracting fields from files or piped text
+    ```bash
+    cut -d ":" -f file # -d is for delimiter and -f is the field e.g. -f1,2,20
+
+    text-command | cut -c # -c is for character e.g. -c10-80
+    ```
+- `paste` is a tool for merging together different files into a single, multi-column file. In combination with `cut`,
+useful for creating system log files
+- `head` and `tail` lists the beginning and end of files with the amount of char changeabe with the `-c` option and number of lines changeable with the `-n` option e.g. `head -n10 .gitignore` for first 10 lines 
+    ```bash
+    # the -f follow flag allows you to monitor the file for changes and yes, it will interrupt  unless run in the background
+    tail -f /var/log/syslog 
+
+    ```
+- `grep` - Global Regular Expression Print
+    ```bash
+    # grep [OPTIONS] PATTERN [FILE...]
+
+    # ----- BASIC SYNTAX -----
+    grep "error" logfile.txt               # Search for "error"
+    grep "error" *.log                     # Search in multiple files
+    command | grep "error"                 # Filter command output
+
+    # ----- PRACTICAL PIPELINE EXAMPLES -----
+    ps aux | grep "python" | grep -v "grep"                # Find Python processes, exclude grep itself
+    grep -r --include="*.js" "console.log" ./src/          # Recursive search only in .js files
+    grep -l "TODO" * | xargs grep -n "FIXME"               # Files with TODO, then search for FIXME in them
+    history | grep "git commit" | wc -l                    # Count how many git commits you've made
+    grep -oE "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}" emails.txt   # Extract email addresses
+    ```
+- `wc` gives a "word count" on a file or I/O stream:
+    ```bash
+    wc -w # gives only the word count.
+    wc -l # gives only the line count.
+    wc -c # gives only the byte count.
+    wc -m # gives only the character count.
+    wc -L # gives only the length of the longest line
+    ```
+- `tr` is **find and replace** for characters. It also has `-d` option for deleting characters and a `-s` option for replacing consecutive repeated characters with a single occurence
+    ```bash
+    echo "hello" | tr 'a-z' 'A-Z' # with piping
+
+    tr 'a-z' 'A-Z' < input.txt > output.txt # with standard input
+
+    tr 'a-z' 'A-Z' myfile.txt   # WRONG! tr ignores 'myfile.txt' and just sits waiting for keyboard input.
+    ```
+- `fold` will brutally split a word in half. Once the character limit is reached, it inserts a newline immediately, even if it's in the middle of a word. `fmt` will not split words. It uses a "greedy" algorithm to pack as many words as possible onto a line. If the next word would exceed the limit, `fmt` moves the entire word to the next line, preserving the word's integrity.
