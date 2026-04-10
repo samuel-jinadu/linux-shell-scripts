@@ -311,3 +311,246 @@ useful for creating system log files
     tr 'a-z' 'A-Z' myfile.txt   # WRONG! tr ignores 'myfile.txt' and just sits waiting for keyboard input.
     ```
 - `fold` will brutally split a word in half. Once the character limit is reached, it inserts a newline immediately, even if it's in the middle of a word. `fmt` will not split words. It uses a "greedy" algorithm to pack as many words as possible onto a line. If the next word would exceed the limit, `fmt` moves the entire word to the next line, preserving the word's integrity.
+- `--` tells the command: "Stop parsing any more arguments as options or flags. Everything after this is a plain argument (like filenames or directory paths), even if it starts with a hyphen (-)."
+    ```bash
+    mv -- -file.txt destination/
+    ```
+
+## 10th of April, 2026
+- `file` determines the type of a file by examining its content (magic numbers) rather than its name or extension
+    ```bash
+    file path/to/file
+
+    # Get just the type, no filename, and as a MIME string
+    file -b -i dump-bash.txt
+    ```
+- What a professional script looks like
+    ```bash
+    #!/usr/bin/env bash
+    # ------------------------------------------------------------------------------
+    # Professional Bash Script Template
+    # ------------------------------------------------------------------------------
+    # Best practices for robust, maintainable, and portable scripts.
+    # ------------------------------------------------------------------------------
+
+    # ---- Strict Mode (Catch errors early) ---------------------------------------
+    set -euo pipefail   # Exit on error, undefined variable, or pipe failure
+    IFS=$'\n\t'         # Safe Internal Field Separator (handles filenames with spaces)
+
+    # ---- Metadata & Constants ---------------------------------------------------
+    readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
+    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    readonly VERSION="1.0.0"
+
+    # ---- Configuration (Environment variables with defaults) --------------------
+    LOG_LEVEL="${LOG_LEVEL:-INFO}"
+    readonly CONFIG_FILE="${CONFIG_FILE:-$HOME/.config/myscript.conf}"
+
+    # ---- Help / Usage Function --------------------------------------------------
+    usage() {
+        cat <<EOF
+    Usage: $SCRIPT_NAME [OPTIONS] <required_arg>
+
+    Description of what this script does.
+
+    Options:
+        -h, --help      Show this help message and exit
+        -v, --verbose   Enable verbose output
+        -o FILE         Output file path (default: stdout)
+
+    Examples:
+        $SCRIPT_NAME input.txt
+        $SCRIPT_NAME -o output.txt input.txt
+    EOF
+        exit 0
+    }
+
+    # ---- Logging Functions (Standardised output) --------------------------------
+    log_debug() { if [[ "$LOG_LEVEL" == "DEBUG" ]]; then echo "[DEBUG] $*"; fi; }
+    log_info()  { if [[ "$LOG_LEVEL" =~ ^(INFO|DEBUG)$ ]]; then echo "[INFO]  $*"; fi; }
+    log_warn()  { if [[ "$LOG_LEVEL" =~ ^(WARN|INFO|DEBUG)$ ]]; then echo "[WARN]  $*" >&2; fi; }
+    log_error() { echo "[ERROR] $*" >&2; }
+
+    # ---- Cleanup Function (Runs on exit, even if script fails) ------------------
+    cleanup() {
+        local exit_code=$?
+        # Remove temporary files, kill background processes, etc.
+        if [[ -n "${TEMP_DIR:-}" && -d "$TEMP_DIR" ]]; then
+            rm -rf "$TEMP_DIR"
+            log_debug "Removed temporary directory: $TEMP_DIR"
+        fi
+        exit $exit_code
+    }
+    trap cleanup EXIT INT TERM
+
+    # ---- Main Logic Function ----------------------------------------------------
+    main() {
+        local output_file=""
+        local input_arg=""
+
+        # ---- Argument Parsing ---------------------------------------------------
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                -h|--help)
+                    usage
+                    ;;
+                -v|--verbose)
+                    LOG_LEVEL="DEBUG"
+                    shift
+                    ;;
+                -o)
+                    output_file="$2"
+                    shift 2
+                    ;;
+                --)
+                    shift
+                    break
+                    ;;
+                -*)
+                    log_error "Unknown option: $1"
+                    usage
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+
+        # ---- Validate Required Arguments ----------------------------------------
+        if [[ $# -lt 1 ]]; then
+            log_error "Missing required argument."
+            usage
+        fi
+        input_arg="$1"
+
+        # ---- Dependency Checks --------------------------------------------------
+        local deps=("jq" "curl")   # List required external commands
+        for cmd in "${deps[@]}"; do
+            if ! command -v "$cmd" &> /dev/null; then
+                log_error "Required command '$cmd' not found. Please install it."
+                exit 1
+            fi
+        done
+
+        # ---- Create Temporary Workspace -----------------------------------------
+        TEMP_DIR="$(mktemp -d)"
+        log_debug "Created temporary directory: $TEMP_DIR"
+
+        # ---- Core Business Logic ------------------------------------------------
+        log_info "Processing '$input_arg'..."
+
+        # Example: check if input file exists
+        if [[ ! -f "$input_arg" ]]; then
+            log_error "Input file not found: $input_arg"
+            exit 1
+        fi
+
+        # ... your actual script logic goes here ...
+
+        # Example: write output
+        if [[ -n "$output_file" ]]; then
+            echo "Results for $input_arg" > "$output_file"
+            log_info "Output written to: $output_file"
+        else
+            echo "Results for $input_arg"
+        fi
+
+        log_info "Script completed successfully."
+    }
+
+    # ---- Entry Point ------------------------------------------------------------
+    main "$@"
+    ```
+- What professoinal filenames look like
+    ```bash
+    #!/usr/bin/env bash
+    # ------------------------------------------------------------------------------
+    # Professional Script Filename Conventions
+    # ------------------------------------------------------------------------------
+    # A filename is the first impression. Follow these rules for clarity, 
+    # portability, and maintainability.
+
+    # ---- 1. CASE: Lowercase Only ------------------------------------------------
+    # ✅ Good: deploy-app.sh, backup-database.sh, clean-temp-files.sh
+    # ❌ Bad:  DeployApp.sh, Backup-Database.SH, CleanTempFiles.sh
+    #
+    # Reason: Unix filesystems are case-sensitive. Lowercase prevents confusion
+    # and typing errors across different OS environments (Linux vs macOS).
+
+    # ---- 2. WORD SEPARATOR: Hyphens, Not Underscores -----------------------------
+    # ✅ Good: process-logs.sh, user-create.sh, mysql-backup.sh
+    # ❌ Bad:  process_logs.sh, user_create.sh, mysqlBackup.sh
+    #
+    # Reason: Hyphens are easier to type (no Shift key). Underscores can be
+    # visually mistaken for spaces in underlined terminal links. Underscores
+    # are reserved for variable names ($user_name).
+
+    # ---- 3. EXTENSION: Use .sh (Be Explicit) ------------------------------------
+    # ✅ Good: install.sh, monitor-services.sh, parse-json.sh
+    # ❌ Bad:  install, monitor-services, parse-json.bash
+    #
+    # Reason: Editors rely on extensions for syntax highlighting. While Linux
+    # doesn't require an extension, humans do. Using .sh tells the world this is a
+    # Bourne-family shell script.
+
+    # ---- 4. LENGTH: Descriptive but Brief ---------------------------------------
+    # ✅ Good: sync-s3-bucket.sh
+    # ❌ Bad:  do_the_thing_that_syncs_files_to_amazon_s3_bucket_v2_final.sh
+    # ❌ Bad:  s.sh
+    #
+    # Reason: The filename should hint at the script's purpose at a glance in
+    # `ls -l` output. Aim for 3-5 words max.
+
+    # ---- 5. VERSIONING: Avoid Filenames, Use Git Tags ---------------------------
+    # ❌ Bad:  deploy-v1.sh, deploy-old.sh, deploy-2024-01-01.sh
+    # ✅ Good: deploy.sh (and use `git tag v1.0.0` to track versions)
+    #
+    # Reason: Versioned filenames clutter directories and make it hard to find
+    # the "current" version. Let version control manage history.
+
+    # ---- 6. TEMPORARY/BACKUP FILES: Use Extensions, Not Prefixes -----------------
+    # ✅ Good: script.sh.bak, config.conf.2024-01-01
+    # ❌ Bad:  old_script.sh, #script.sh#, .script.sh.swp
+    #
+    # Reason: Keeping the base name first groups related files together in `ls`
+    # output. The extension describes the file's *status*, not its *type*.
+
+    # ------------------------------------------------------------------------------
+    # TEMPLATE: The Ideal Filename Structure
+    # ------------------------------------------------------------------------------
+    # [action]-[target]-[optional-descriptor].sh
+    #
+    # Examples:
+    #   - start-web-server.sh        (Action: start, Target: web-server)
+    #   - backup-mysql-daily.sh      (Action: backup, Target: mysql, Descriptor: daily)
+    #   - validate-yaml-syntax.sh    (Action: validate, Target: yaml, Descriptor: syntax)
+
+    # ------------------------------------------------------------------------------
+    # REAL-WORLD EXAMPLES (Good vs. Bad)
+    # ------------------------------------------------------------------------------
+    # ✅  deploy.sh
+    # ✅  archive-logs.sh
+    # ✅  check-disk-usage.sh
+    # ✅  rotate-ssl-certs.sh
+    #
+    # ❌  Deploy_Script_1.0.sh
+    # ❌  s.sh
+    # ❌  do-backup
+    # ❌  myscript.bash
+
+    # ------------------------------------------------------------------------------
+    # SPECIAL CASES
+    # ------------------------------------------------------------------------------
+    # 1. LIBRARY FILES (Sourced, not executed):
+    #    Use .sh suffix but place in `lib/` or use `.lib` suffix.
+    #    Example: `logging.lib`, `db-utils.sh`
+    #
+    # 2. CONFIG FILES:
+    #    Use .conf or .cfg. Match the script name for clarity.
+    #    Example: `backup-mysql.conf` paired with `backup-mysql.sh`
+    #
+    # 3. SCRIPTS IN $PATH (System-wide commands):
+    #    Drop the .sh extension entirely if the script is meant to be a general
+    #    command like `git` or `docker`.
+    #    Example: `/usr/local/bin/deploy-cluster`
+    ```

@@ -4,3 +4,4 @@ docx-to-epub/
 texts/
 pdf-prep/*.pdf
 pdf-prep/*/
+*.ini
