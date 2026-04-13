@@ -554,3 +554,15 @@ useful for creating system log files
     #    command like `git` or `docker`.
     #    Example: `/usr/local/bin/deploy-cluster`
     ```
+
+## 11th of April, 2026
+- A **collision** in the *checksum* world is when two completely different files produce the exact same checksum number.
+
+## 13th of April, 2026
+- Improved `bc` function
+    ```bash
+    # Add this to ~/.bashrc, then run "source ~/.bashrc"
+    calc() {
+        echo "scale=4; $*" | bc -l | sed 's/\.0*$//'
+    }
+    ```
