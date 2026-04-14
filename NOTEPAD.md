@@ -566,3 +566,106 @@ useful for creating system log files
         echo "scale=4; $*" | bc -l | sed 's/\.0*$//'
     }
     ```
+
+## 14th of April, 2026
+- Here document syntax
+    ```bash
+    # Used to feed a multi-line block of text as input to a command.
+
+    # Basic syntax:
+    # command << DELIMITER
+    #   line 1
+    #   line 2
+    # DELIMITER
+
+    # Example 1: Simple cat
+    cat << EOF
+    Hello, this is a here document.
+    It can contain multiple lines.
+    EOF
+
+    # Example 2: Indented with tabs (<<-) – leading tabs are stripped
+    cat <<- EOF
+        This line starts with a tab (will be stripped).
+        Another tabbed line.
+    EOF
+
+    # Example 4: Allow expansions (default)
+    name="Alice"
+    cat << EOF
+    Hello $name, today is $(date +%A).
+    EOF
+
+    # Example 5: Redirect output to a file
+    cat << EOF > output.txt
+    This goes into output.txt
+    Second line.
+    EOF
+
+    # Example 6: Append to a file
+    cat << EOF >> log.txt
+    Appending this line.
+    EOF
+
+    # Notes:
+    # - The delimiter (EOF, END, etc.) must appear alone on a line (no leading/trailing spaces unless using <<- and tabs).
+    # - Standard delimiter is EOF, but any word works.
+    # - <<- strips only leading TAB characters (not spaces) – useful for indented scripts.
+    ```
+- Here string syntax
+    ```bash
+    # Here String Syntax in Bash
+    # Syntax: command <<< "string"
+
+    # Example 1: Pass a string as input to a command
+    grep "foo" <<< "foo bar baz"   # Output: foo bar baz
+
+    # Example 2: Assign to a variable
+    read first second <<< "hello world"
+    echo $first   # hello
+    echo $second  # world
+
+    # Example 3: Use with tr
+    tr 'a-z' 'A-Z' <<< "hello"   # HELLO
+
+    # Example 4: Variable expansion
+    name="Alice"
+    cat <<< "Hello, $name!"       # Hello, Alice!
+    ```
+- The **file descriptors** for `stdin` (the keyboard), `stdout` (screen), and `stderr` (error messages outputed to the screen) are `0`, `1`, and `2`, respectively
+- Redirection syntax
+    ```bash
+    #########################################
+    #          BASH REDIRECTION             #
+    #########################################
+
+    # ---- File Descriptors ----
+    # 0 = stdin   (standard input)
+    # 1 = stdout  (standard output)
+    # 2 = stderr  (standard error)
+
+    # ---- Basic Redirection ----
+    command > file        # redirect stdout to file (overwrite)
+    command >> file       # redirect stdout to file (append)
+    command < file        # redirect stdin from file
+    command < file > out  # stdin from file, stdout to out
+
+    # ---- Redirecting Specific FDs ----
+    command 2> err.log    # redirect stderr to err.log
+    command 1> out 2> err # stdout to out, stderr to err
+    command &> all.log    # both stdout & stderr to all.log (bash)
+    command > all.log 2>&1 # same as above (POSIX)
+    command 2>&1 > out    # WRONG: stderr goes to old stdout
+    # Correct order:      command > out 2>&1
+
+    # ---- Append with Specific FDs ----
+    command >> out 2>> err
+
+    # ---- Discard Output ----
+    command > /dev/null 2>&1   # silence all output
+    command 2> /dev/null       # discard stderr only
+
+    # ---- Closing File Descriptors ----
+    command 2>&-           # close stderr, apparently this will prevent errors from been outputed or recorded anywhere for that process
+
+    ```
