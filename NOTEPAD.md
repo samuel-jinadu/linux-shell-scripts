@@ -669,3 +669,146 @@ useful for creating system log files
     command 2>&-           # close stderr, apparently this will prevent errors from been outputed or recorded anywhere for that process
 
     ```
+
+## 15th of April, 2026
+- How to **redirect keyboard presses** into a file using `/dev/tty` which is a device fle that stores keyboard input
+    ```bash
+    cat /dev/tty > keystrokes.log # but you won't be able to see what you're typing on the terminal anymore
+
+    cat /dev/tty | tee keystrokes.log # redirects keystrokes to both the terminal and the log file so yo can still see what you're typng
+    ```
+- How `/dev/tty` works
+    ```
+    [Keyboard]
+        ↓ (Scan codes)
+    [Terminal Driver / TTY]  <--- This is the "Terminal Device" (/dev/tty)
+        |
+        |---(Echo)-----------------------> [Screen]  (Shows 'l', 's' as you type)
+        |
+        |---(Input Buffer)---stdin(0)---> [Bash Shell]
+                                          |
+                                          |---stdout(1)--> [Terminal Driver] → [Screen]
+                                          |---stderr(2)--> [Terminal Driver] → [Screen]
+    ```
+- A **file descriptor** (FD) is an integer that the *operating system* uses as a handle to an open file or I/O stream.
+- Using `exec` for redirection
+    ```bash
+    # ---- Redirect all subsequent output ----
+    exec > out.log 2>&1        # whole script output goes to out.log
+
+    # ---- Save and restore original FDs ----
+    exec 3>&1                  # save current stdout to FD 3
+    exec > file                # redirect stdout to file
+    # ... do work ...
+    exec 1>&3                  # restore stdout from FD 3
+    exec 3>&-                  # close FD 3
+
+    # ---- Open custom FD for reading/writing ----
+    exec 3< input.txt          # open FD 3 for reading
+    read -u 3 line             # read first line from FD 3
+    exec 3<&-                  # close read FD
+
+    exec 4> output.txt         # open FD 4 for writing
+    echo "log" >&4             # write to FD 4
+    exec 4>&-                  # close write FD
+    ```
+- Redirectng code blocks
+    ```bash
+    # ---- Group Commands with { } ----
+    { echo "line1"; echo "line2"; } > out.txt       # redirect all stdout
+
+    # Note: space after { and ; before } required:
+    { command; } 2> err.log                         # correct
+    { command } 2> err.log                          # WRONG (missing ;)
+
+    # ---- Subshell with ( ) ----
+    ( cd /tmp; ls; ) > listing.txt                  # runs in subshell, cwd unchanged
+
+    # ---- Combine stdout and stderr for block ----
+    { cmd1; cmd2; } &> combined.log                 # bash shortcut
+    { cmd1; cmd2; } > all.log 2>&1                  # POSIX
+
+    # ---- Append from block ----
+    { date; uptime; } >> status.log
+
+    # ---- Pipe block output ----
+    { echo "Header"; cat data; } | grep "pattern"
+
+    # ---- Use with while/for loops ----
+    while read line; do echo "$line"; done < input.txt > output.txt
+
+    # ---- Redirect file descriptor inside block ----
+    {
+        echo "stdout"
+        echo "stderr" >&2
+    } 2> err.log                                     # stderr to err.log
+
+    # ---- Common use: logging function output ----
+    log_block() {
+        {
+            echo "=== $1 ==="
+            "$@"
+        } >> /var/log/script.log 2>&1
+    }
+    ```
+- A `subshell` is a **child process** launched by a *shell* (or shell script)
+    ```bash
+    # ---- Create a subshell with ( ) ----
+    ( cd /tmp; touch file )      # cwd change does not affect parent
+    pwd                          # still original directory
+
+    # ---- Variable changes are local to subshell ----
+    var=10
+    ( var=20; echo "inside: $var" )   # prints 20
+    echo "outside: $var"              # prints 10
+
+    # ---- Capture output of subshell ----
+    result=$( (echo "Hello"; date) )
+    echo "$result"
+
+    # ---- Redirect entire subshell output ----
+    ( cmd1; cmd2; ) > out.log 2>&1
+
+    # ---- Run commands in background ----
+    ( sleep 5; echo "done" ) &     # background subshell
+
+    # ---- Pipe from/to subshell ----
+    ( echo "Header"; cat file ) | grep "pattern"
+    echo "input" | ( read val; echo "$val" )
+
+    # ---- Use subshell to isolate environment ----
+    ( export PATH="/custom:$PATH"; ./script.sh )
+
+    # ---- Explicit subshell with 'bash -c' ----
+    bash -c 'cd /tmp && ls'        # starts new bash process
+    ```
+- In general, an `external command` in a script forks off a **subprocess**, whereas a Bash *builtin* does not. For this reason, *builtins* execute more quickly and use fewer system resources than their `external command` equivalents
+- The **scope of a variable** is the context in which it has a value that can be referenced
+- Directory changes made in a `subshell` do not carry over to the *parent shell*.
+- **Lockfiles** are simple files used to prevent multiple instances of a script or process from running simultaneously. They act as a flag: the script creates a lockfile when it starts and removes it when it finishes. If another instance sees the lockfile already exists, it exits or waits.
+    ```bash
+    # Basic lockfile pattern
+    LOCKFILE="/tmp/myscript.lock"
+
+    # Try to create lockfile atomically
+    if [ -e "$LOCKFILE" ]; then
+        echo "Already running. Exiting."
+        exit 1
+    fi
+
+    trap 'rm -f "$LOCKFILE"' EXIT   # Always remove on exit
+    touch "$LOCKFILE"               # Create lock
+
+    # ... main script work ...
+    ```
+- The `set -C` (or `set -o noclobber`) prevents `>` from overwriting an existing file. 
+    ```bash
+    if (set -C; : > lock_file) 2> /dev/null; then
+        # lock created successfully (file didn't exist)
+        echo "Running script..."
+        rm -f lock_file  # clean up
+    else
+        echo "Already running."
+        exit 65
+    fi
+    ```
