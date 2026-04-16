@@ -812,3 +812,16 @@ useful for creating system log files
         exit 65
     fi
     ```
+## 16th of April, 2026
+- **Process substituition**: replaces `<(command)` or `>(command)` with a temporary file descriptor path (e.g., /dev/fd/63) that represents the stdin/stdout of the enclosed command.
+    ```
+        <(command)   →   Creates a readable file containing the output of `command`.
+        >(command)   →   Creates a writable file that feeds data into `command`'s stdin.
+    ```
+- The point is to bypass the need for temporary disk files by allowing commands that expect
+    filename arguments to interact directly with pipeline data streams.
+- Critical Distinctions:
+    - `command1 <(command2)` : Works. `command1` reads the fake file as input.
+    - `command1 > >(command2)` : Works. Shell redirects `command1`'s stdout into the fake file, which pipes to `command2`'s stdin.
+    - `command1 >(command2)` : Usually nonsense. `command1` receives the string "/dev/fd/63" as an argument and typically does nothing with it unless it specifically expects a filename argument (e.g., `tar -f` in which case `command1` will use the tmp file for whatever and `command2` will be able to use it as stdin).
+- Essence: It turns a process into a file, so tools that only speak "file" can participate in pipelines without ever touching a physical disk.
