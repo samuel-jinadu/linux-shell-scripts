@@ -823,5 +823,135 @@ useful for creating system log files
 - Critical Distinctions:
     - `command1 <(command2)` : Works. `command1` reads the fake file as input.
     - `command1 > >(command2)` : Works. Shell redirects `command1`'s stdout into the fake file, which pipes to `command2`'s stdin.
-    - `command1 >(command2)` : Usually nonsense. `command1` receives the string "/dev/fd/63" as an argument and typically does nothing with it unless it specifically expects a filename argument (e.g., `tar -f` in which case `command1` will use the tmp file for whatever and `command2` will be able to use it as stdin).
+    - `command1 >(command2)` : Usually nonsense. `command1` receives the string "/dev/fd/63" as an argument and typically does nothing with it unless it specifically expects a filename argument (e.g., `tar -f` in which case `` will use the tmp file for whatever and `command2` will be able to use it as stdin).
 - Essence: It turns a process into a file, so tools that only speak "file" can participate in pipelines without ever touching a physical disk.
+
+## 17th of April, 2026
+- The *function definition* must precede the first call to it.
+- *Function declarations* can appear in `if-blocks` and even "|" pipes
+- Indirect variable expansion, when the name of another variable is stored in a variable and the variable is used to get the value of the other variable
+    ```bash
+    ${!var_name}
+
+    # `var_name` holds the **name** of another variable (e.g., `message="Hello"` and `Hello="Goodbye"`).  
+    # The `!` tells Bash to perform **indirect expansion**: it takes the **value** of `var_name` and then expands that as a variable name.  
+    # Result: you get the value of the variable whose name is stored in `var_name`.
+    ```
+- Name references in functions
+    ```bash
+    # Function that modifies a variable passed by name
+    modify_var() {
+        # Create a nameref (name reference) pointing to the variable named in $1
+        local -n ref=$1
+        # Now 'ref' acts as an alias for the original variable
+        ref="Modified Value"
+    }
+
+    # Function that modifies an array passed by name
+    modify_array() {
+        local -n arr_ref=$1       # arr_ref now references the array named in $1
+        arr_ref[0]="New Element"  # Modifies the actual array outside
+        arr_ref+=("Extra")        # Appends an element
+    }
+
+    # --- Scalar example ---
+    my_var="Original"
+    modify_var my_var
+    echo "$my_var"   # Output: Modified Value
+
+    # --- Array example ---
+    my_array=("First" "Second")
+    modify_array my_array
+    echo "${my_array[@]}"   # Output: New Element Second Extra
+    ```
+- Putting `return n` in a function makes the function immediately terminate iwth an *exit status* of `n`
+- **Piping and Redirection** for bash functions
+    ```bash
+    # Function that reads from stdin (pipe input) and writes to stdout (pipe output)
+    capitalize() {
+        while read -r line; do
+            echo "${line^^}"          # Convert to uppercase, goes to stdout
+        done
+    }
+
+    # Function with internal redirection (affects only part of the function)
+    read_config() {
+        echo "Reading header..."      # Uses normal stdout
+        {
+            read key value
+            echo "Config: $key = $value"
+        } < /etc/config.conf         # Only the block reads from file
+        echo "Footer"                 # Back to normal stdout
+    }
+
+    # Function with redirection on definition (baked-in stdin)
+    always_read_hostname() {
+        read host
+        echo "Hostname: $host"
+    } < /etc/hostname                 # This redirection applies to EVERY call
+
+
+    # --- Usage Examples ---
+
+    # 1. Pipe INTO a function
+    echo "hello world" | capitalize   # Output: HELLO WORLD
+
+    # 2. Pipe OUT OF a function
+    capitalize <<< "test" | wc -c     # Output: 5 (count of characters)
+
+    # 3. Function with internal redirection (file must exist)
+    # read_config                     # Would read from /etc/config.conf
+
+    # 4. Baked-in redirection overrides pipe input
+    echo "ignored" | always_read_hostname  # Still reads from /etc/hostname
+    ```
+- Before a function is called, all variables declared within the function are invisible outside the
+body of the function, not just those explicitly declared as local
+- List Constructs
+    ```bash
+    # --- AND (&&) and OR (||) Constructs in Bash ---
+
+    # 1. Command Chaining: Execute second command only if first succeeds (exit status 0)
+    mkdir /tmp/mydir && echo "Directory created successfully"
+
+    # 2. Command Chaining: Execute second command only if first fails (exit status non-zero)
+    grep "pattern" file.txt || echo "Pattern not found"
+
+    # 3. Combining both: if..then..else style logic with && and ||
+    command1 && command2 || command3
+    # Explanation: If command1 succeeds, run command2; otherwise run command3.
+    # Note: This is not exactly if-else; if command2 fails, command3 also runs! Use with caution.
+
+    # 4. Using && and || inside `if` statements (preferred for complex conditions)
+    if command1 && command2; then
+        echo "Both commands succeeded"
+    fi
+
+    if command1 || command2; then
+        echo "At least one command succeeded"
+    fi
+
+    # 5. Within `[ ]` (POSIX test): -a (AND) and -o (OR) — discouraged, use separate tests
+    #    The `-a` and `-o` operators can be ambiguous; prefer `[ test1 ] && [ test2 ]`
+    [ "$a" -eq 1 -a "$b" -eq 2 ] && echo "Both true (using -a)"
+    # Safer alternative:
+    [ "$a" -eq 1 ] && [ "$b" -eq 2 ] && echo "Both true (separate tests)"
+
+    # 6. Within `[[ ]]` (Bash extended test): && and || directly allowed
+    [[ $a -eq 1 && $b -eq 2 ]] && echo "Both true (Bash [[ ]])"
+    [[ $a -eq 1 || $b -eq 2 ]] && echo "At least one true"
+
+    # 7. Combining conditions with grouping
+    [[ ($a -eq 1 || $b -eq 2) && $c -eq 3 ]] && echo "Complex condition met"
+
+    # 8. Short-circuit evaluation example
+    [ -f "$file" ] && cat "$file"    # Only cat if file exists
+    [ -w "$file" ] || { echo "Cannot write to $file"; exit 1; }
+
+    # 9. Using with loops
+    for i in {1..5}; do
+        [ $i -eq 3 ] && continue   # Skip 3
+        [ $i -eq 5 ] && break      # Stop at 5
+        echo $i
+    done
+    ```
