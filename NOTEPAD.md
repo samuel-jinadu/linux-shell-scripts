@@ -955,3 +955,63 @@ body of the function, not just those explicitly declared as local
         echo $i
     done
     ```
+## 18th of April, 2026
+- Arrays in Bash
+    ```bash
+    # --- INDEXED ARRAYS (0-based) ---
+
+    # 1. Declaration and Assignment
+    arr=()                     # empty array
+    arr=(apple banana cherry)  # initialize with values
+    arr[3]="date"              # assign to specific index (can be non-sequential)
+    arr+=(elderberry fig)      # append multiple values
+
+    # 2. Accessing Elements
+    echo "${arr[0]}"           # first element -> apple
+    echo "${arr[-1]}"          # last element (Bash 4.2+)
+    echo "${arr[@]}"           # all elements as separate words
+    echo "${arr[*]}"           # all elements as single string (IFS-separated)
+    echo "${#arr[@]}"          # number of elements, counts set elements rather than maximum index
+    max_index=$(printf '%s\n' "${!arr[@]}" | sort -nr | head -1) # actual maximum index
+    echo "${!arr[@]}"          # list of indices (keys)
+
+    # 3. Slicing (Bash 4+)
+    echo "${arr[@]:1:2}"       # slice from index 1, length 2 -> banana cherry
+
+    # 4. Looping
+    for item in "${arr[@]}"; do
+        echo "Item: $item"
+    done
+
+    for index in "${!arr[@]}"; do
+        echo "Index $index = ${arr[$index]}"
+    done
+
+    # 5. Modifying
+    unset arr[1]               # remove element at index 1 (leaves a hole)
+    arr=("${arr[@]}")          # re-index to remove holes
+    unset arr                  # delete entire array
+
+
+    # --- COMMON PATTERNS & TRICKS ---
+
+    # Read lines of a file into an array (Bash 4+)
+    mapfile -t lines < file.txt   # or: readarray -t lines < file.txt
+
+    # Copy an array
+    copy=( "${arr[@]}" )
+
+    # Check if array contains a value
+    if [[ " ${arr[*]} " =~ " banana " ]]; then
+        echo "Found banana"
+    fi
+
+    # Convert string to array using IFS
+    str="one,two,three"
+    IFS=',' read -ra parts <<< "$str"
+    echo "${parts[1]}"   # two
+
+    # Join array elements with a delimiter
+    joined=$(IFS=,; echo "${arr[*]}") # joins elements using only the first character of IFS as the separator.
+    echo "$joined"       # apple,banana,cherry,...  
+    ```
